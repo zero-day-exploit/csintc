@@ -1,117 +1,341 @@
-try {
-    console.log('Starting the countdown script...');
-
-    document.addEventListener('DOMContentLoaded', function () {
-        console.log('Document is ready.');
-
-        // Let's aim for exactly 7 days from now at 23:59:59
-        const deadline = new Date();
-        deadline.setDate(deadline.getDate() + 7);
-        deadline.setHours(23, 59, 59, 999);
-
-        // Grabbing the elements we’ll need for updates
-        const elDays = document.getElementById('days');
-        const elHours = document.getElementById('hours');
-        const elMinutes = document.getElementById('minutes');
-        const elSeconds = document.getElementById('seconds');
-        const bar = document.getElementById('progress-bar');
-        const title = document.getElementById('title');
-
-        if (!elDays || !elHours || !elMinutes || !elSeconds || !bar || !title) {
-            console.error('Hmm. Some elements didn’t load correctly.');
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7-Day Countdown</title>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        let last = {
-            days: null,
-            hours: null,
-            minutes: null,
-            seconds: null
-        };
-
-        function updateClock() {
-            const now = new Date();
-            const diffMs = deadline - now;
-
-            if (diffMs <= 0) {
-                // Time’s up!
-                clearInterval(tick);
-                title.textContent = "TIME'S UP!";
-                elDays.textContent = elHours.textContent = elMinutes.textContent = elSeconds.textContent = '00';
-                bar.style.width = '100%';
-                return;
-            }
-
-            const msInDay = 86400000;
-            const msInHour = 3600000;
-            const msInMinute = 60000;
-            const msInSecond = 1000;
-
-            const days = Math.floor(diffMs / msInDay);
-            const hours = Math.floor((diffMs % msInDay) / msInHour);
-            const minutes = Math.floor((diffMs % msInHour) / msInMinute);
-            const seconds = Math.floor((diffMs % msInMinute) / msInSecond);
-
-            if (days !== last.days) {
-                animate(elDays, days);
-                last.days = days;
-            }
-            if (hours !== last.hours) {
-                animate(elHours, hours);
-                last.hours = hours;
-            }
-            if (minutes !== last.minutes) {
-                animate(elMinutes, minutes);
-                last.minutes = minutes;
-            }
-
-            // Always update seconds even if same — just to keep it snappy
-            animate(elSeconds, seconds);
-            last.seconds = seconds;
-
-            const full = 7 * 24 * 60 * 60 * 1000; // total ms in 7 days
-            const done = ((full - diffMs) / full) * 100;
-            bar.style.width = done.toFixed(1) + '%'; // just rounding to avoid long decimals
+        @keyframes slideDown {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(100%); opacity: 0; }
         }
 
-        function animate(el, val) {
-            // little slide effect — kinda janky but does the job
-            el.classList.add('digit-slide-down');
-            setTimeout(() => {
-                el.classList.remove('digit-slide-down');
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(-100%)';
-                el.textContent = val.toString().padStart(2, '0');
-                el.classList.add('digit-slide-up');
-                setTimeout(() => {
-                    el.classList.remove('digit-slide-up');
-                    el.style.opacity = '1';
-                    el.style.transform = 'none';
-                }, 600);
-            }, 600);
+        @keyframes slideUp {
+            0% { transform: translateY(-100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
         }
 
-        // Start ticking
-        updateClock();
-        const tick = setInterval(updateClock, 1000);
+        @keyframes glowPulse {
+            0% { box-shadow: 0 0 50px rgba(255, 255, 255, 0.5), 0 0 100px rgba(255, 255, 255, 0.3); }
+            50% { box-shadow: 0 0 70px rgba(255, 255, 255, 0.7), 0 0 120px rgba(255, 255, 255, 0.4); }
+            100% { box-shadow: 0 0 50px rgba(255, 255, 255, 0.5), 0 0 100px rgba(255, 255, 255, 0.3); }
+        }
 
-        // Light balls should follow the mouse a bit
-        document.addEventListener('mousemove', function (e) {
-            const balls = document.querySelectorAll('.light-ball');
-            const xRatio = e.clientX / window.innerWidth;
-            const yRatio = e.clientY / window.innerHeight;
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            margin: 0;
+        }
 
-            balls.forEach(ball => {
-                const shift = 15; // px
-                const offsetX = (xRatio - 0.5) * 2 * shift;
-                const offsetY = (yRatio - 0.5) * 2 * shift;
-                ball.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        .light-ball {
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8), transparent 80%);
+            border-radius: 50%;
+            position: absolute;
+            z-index: 1; /* Behind the container */
+            width: 16rem;
+            height: 16rem;
+            animation: glowPulse 3s ease-in-out infinite;
+            /* Fallback for browsers without mask-image support */
+            opacity: 0.7;
+        }
+
+        @supports ((-webkit-mask-image: linear-gradient(0deg, #fff, #fff)) or (mask-image: linear-gradient(0deg, #fff, #fff))) {
+            .light-ball {
+                -webkit-mask-image: 
+                    linear-gradient(rgba(255, 255, 255, 0.7) 0.5px, transparent 0.5px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0.5px, transparent 0.5px);
+                mask-image: 
+                    linear-gradient(rgba(255, 255, 255, 0.7) 0.5px, transparent 0.5px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0.5px, transparent 0.5px);
+                -webkit-mask-size: 10px 10px;
+                mask-size: 10px 10px;
+                opacity: 1; /* Full opacity when mask is supported */
+            }
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            z-index: 10;
+            animation: fadeIn 1.2s ease-out forwards;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
+        }
+
+        p {
+            color: #ccc;
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .countdown {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .time-unit {
+            text-align: center;
+        }
+
+        .digit {
+            font-size: 5rem;
+            font-weight: bold;
+            display: inline-block;
+            position: relative;
+            height: 2em;
+            width: 2ch;
+        }
+
+        @media (min-width: 768px) {
+            .digit {
+                font-size: 8rem;
+                height: 2em;
+            }
+            h1 {
+                font-size: 4rem;
+            }
+        }
+
+        .digit-inner {
+            display: inline-block;
+            position: relative;
+            width: 100%;
+            text-align: center;
+            opacity: 1;
+        }
+
+        .digit-slide-down {
+            animation: slideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .digit-slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .label {
+            color: #999;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            margin-top: 0.5rem;
+        }
+
+        .separator {
+            font-size: 5rem;
+            font-weight: bold;
+            margin-bottom: 2.5rem;
+        }
+
+        .progress-container {
+            max-width: 32rem;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .progress-bg {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+            border-radius: 9999px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .progress-bar {
+            background: linear-gradient(to right, #8b5cf6, #3b82f6);
+            height: 0.75rem;
+            border-radius: 9999px;
+            width: 0;
+            transition: width 1s ease;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            color: #999;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 1rem;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #999;
+            font-size: 0.875rem;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="light-ball" style="top: 10%; left: 10%;"></div>
+    <div class="light-ball" style="bottom: 10%; right: 10%;"></div>
+
+    <div class="container">
+        <h1 id="title">COUNTDOWN</h1>
+        <p>Only 7 days left until something amazing happens</p>
+        <div class="countdown">
+            <div class="time-unit">
+                <div class="digit">
+                    <span id="days" class="digit-inner">07</span>
+                </div>
+                <div class="label">Days</div>
+            </div>
+            <div class="separator">:</div>
+            <div class="time-unit">
+                <div class="digit">
+                    <span id="hours" class="digit-inner">23</span>
+                </div>
+                <div class="label">Hours</div>
+            </div>
+            <div class="separator">:</div>
+            <div class="time-unit">
+                <div class="digit">
+                    <span id="minutes" class="digit-inner">59</span>
+                </div>
+                <div class="label">Minutes</div>
+            </div>
+            <div class="separator">:</div>
+            <div class="time-unit">
+                <div class="digit">
+                    <span id="seconds" class="digit-inner">59</span>
+                </div>
+                <div class="label">Seconds</div>
+            </div>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bg"></div>
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div class="progress-labels">
+            <span>Start</span>
+            <span>7 days countdown</span>
+            <span>End</span>
+        </div>
+    </div>
+
+    <div class="footer">The wait is almost over...</div>
+
+    <script>
+        try {
+            console.log('Script started');
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('DOM loaded');
+                const endDate = new Date();
+                endDate.setDate(endDate.getDate() + 7);
+                endDate.setHours(23, 59, 59, 999);
+
+                const daysEl = document.getElementById('days');
+                const hoursEl = document.getElementById('hours');
+                const minutesEl = document.getElementById('minutes');
+                const secondsEl = document.getElementById('seconds');
+                const progressBar = document.getElementById('progress-bar');
+                const titleEl = document.getElementById('title');
+
+                if (!daysEl || !hoursEl || !minutesEl || !secondsEl || !progressBar || !titleEl) {
+                    console.error('One or more DOM elements not found');
+                    return;
+                }
+
+                let prevDays, prevHours, prevMinutes, prevSeconds;
+
+                function updateCountdown() {
+                    const now = new Date();
+                    const diff = endDate - now;
+
+                    if (diff <= 0) {
+                        clearInterval(interval);
+                        titleEl.textContent = "TIME'S UP!";
+                        daysEl.textContent = '00';
+                        hoursEl.textContent = '00';
+                        minutesEl.textContent = '00';
+                        secondsEl.textContent = '00';
+                        progressBar.style.width = '100%';
+                        console.log('Countdown ended');
+                        return;
+                    }
+
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    if (days !== prevDays) {
+                        animateSlide(daysEl, days);
+                        prevDays = days;
+                    }
+                    if (hours !== prevHours) {
+                        animateSlide(hoursEl, hours);
+                        prevHours = hours;
+                    }
+                    if (minutes !== prevMinutes) {
+                        animateSlide(minutesEl, minutes);
+                        prevMinutes = minutes;
+                    }
+                    animateSlide(secondsEl, seconds);
+                    prevSeconds = seconds;
+
+                    const totalDuration = 7 * 24 * 60 * 60 * 1000;
+                    const progress = ((totalDuration - diff) / totalDuration) * 100;
+                    progressBar.style.width = `${progress}%`;
+                }
+
+                function animateSlide(element, value) {
+                    element.classList.add('digit-slide-down');
+                    setTimeout(() => {
+                        element.classList.remove('digit-slide-down');
+                        element.style.transform = 'translateY(-100%)';
+                        element.style.opacity = '0';
+                        element.textContent = value.toString().padStart(2, '0');
+                        element.classList.add('digit-slide-up');
+                        setTimeout(() => {
+                            element.classList.remove('digit-slide-up');
+                            element.style.transform = 'none';
+                            element.style.opacity = '1';
+                        }, 600);
+                    }, 600);
+                }
+
+                updateCountdown();
+                const interval = setInterval(updateCountdown, 1000);
+                console.log('Interval set');
+
+                document.addEventListener('mousemove', (e) => {
+                    const balls = document.querySelectorAll('.light-ball');
+                    const x = e.clientX / window.innerWidth;
+                    const y = e.clientY / window.innerHeight;
+                    balls.forEach((ball) => {
+                        const maxMove = 15;
+                        const translateX = Math.min(maxMove, Math.max(-maxMove, (x - 0.5) * 30));
+                        const translateY = Math.min(maxMove, Math.max(-maxMove, (y - 0.5) * 30));
+                        ball.style.transform = `translate(${translateX}px, ${translateY}px)`;
+                    });
+                });
+                console.log('Mouse event listener added');
             });
-        });
-
-        console.log('All set.');
-    });
-} catch (err) {
-    // Catch any unexpected errors
-    console.error('Whoops, something broke:', err);
-}
+        } catch (e) {
+            console.error('Script error:', e);
+        }
+    </script>
+</body>
+</html>
