@@ -1,0 +1,117 @@
+try {
+    console.log('Starting the countdown script...');
+
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('Document is ready.');
+
+        // Let's aim for exactly 7 days from now at 23:59:59
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 7);
+        deadline.setHours(23, 59, 59, 999);
+
+        // Grabbing the elements we’ll need for updates
+        const elDays = document.getElementById('days');
+        const elHours = document.getElementById('hours');
+        const elMinutes = document.getElementById('minutes');
+        const elSeconds = document.getElementById('seconds');
+        const bar = document.getElementById('progress-bar');
+        const title = document.getElementById('title');
+
+        if (!elDays || !elHours || !elMinutes || !elSeconds || !bar || !title) {
+            console.error('Hmm. Some elements didn’t load correctly.');
+            return;
+        }
+
+        let last = {
+            days: null,
+            hours: null,
+            minutes: null,
+            seconds: null
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const diffMs = deadline - now;
+
+            if (diffMs <= 0) {
+                // Time’s up!
+                clearInterval(tick);
+                title.textContent = "TIME'S UP!";
+                elDays.textContent = elHours.textContent = elMinutes.textContent = elSeconds.textContent = '00';
+                bar.style.width = '100%';
+                return;
+            }
+
+            const msInDay = 86400000;
+            const msInHour = 3600000;
+            const msInMinute = 60000;
+            const msInSecond = 1000;
+
+            const days = Math.floor(diffMs / msInDay);
+            const hours = Math.floor((diffMs % msInDay) / msInHour);
+            const minutes = Math.floor((diffMs % msInHour) / msInMinute);
+            const seconds = Math.floor((diffMs % msInMinute) / msInSecond);
+
+            if (days !== last.days) {
+                animate(elDays, days);
+                last.days = days;
+            }
+            if (hours !== last.hours) {
+                animate(elHours, hours);
+                last.hours = hours;
+            }
+            if (minutes !== last.minutes) {
+                animate(elMinutes, minutes);
+                last.minutes = minutes;
+            }
+
+            // Always update seconds even if same — just to keep it snappy
+            animate(elSeconds, seconds);
+            last.seconds = seconds;
+
+            const full = 7 * 24 * 60 * 60 * 1000; // total ms in 7 days
+            const done = ((full - diffMs) / full) * 100;
+            bar.style.width = done.toFixed(1) + '%'; // just rounding to avoid long decimals
+        }
+
+        function animate(el, val) {
+            // little slide effect — kinda janky but does the job
+            el.classList.add('digit-slide-down');
+            setTimeout(() => {
+                el.classList.remove('digit-slide-down');
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-100%)';
+                el.textContent = val.toString().padStart(2, '0');
+                el.classList.add('digit-slide-up');
+                setTimeout(() => {
+                    el.classList.remove('digit-slide-up');
+                    el.style.opacity = '1';
+                    el.style.transform = 'none';
+                }, 600);
+            }, 600);
+        }
+
+        // Start ticking
+        updateClock();
+        const tick = setInterval(updateClock, 1000);
+
+        // Light balls should follow the mouse a bit
+        document.addEventListener('mousemove', function (e) {
+            const balls = document.querySelectorAll('.light-ball');
+            const xRatio = e.clientX / window.innerWidth;
+            const yRatio = e.clientY / window.innerHeight;
+
+            balls.forEach(ball => {
+                const shift = 15; // px
+                const offsetX = (xRatio - 0.5) * 2 * shift;
+                const offsetY = (yRatio - 0.5) * 2 * shift;
+                ball.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            });
+        });
+
+        console.log('All set.');
+    });
+} catch (err) {
+    // Catch any unexpected errors
+    console.error('Whoops, something broke:', err);
+}
